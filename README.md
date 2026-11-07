@@ -81,3 +81,4 @@ Only the store files change. The pages stay the same. Details: [docs/architectur
 ---
 
 © 2026 Maahad Integrasi Tahfiz Selangor Pandan Indah
+# mitspi-sys
