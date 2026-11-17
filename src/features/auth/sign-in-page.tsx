@@ -14,29 +14,44 @@ export function SignInPage({ next }: { next: string }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showErrors, setShowErrors] = useState(false)
+  const [isSending, setIsSending] = useState(false)
+  const [failed, setFailed] = useState(false)
 
   const emailError = email.includes("@") ? "" : "Enter your email."
   const passwordError = password === "" ? "Enter your password." : ""
   // Go back to the admin page that sent us here, if any.
   const from = (location.state as { from?: string } | null)?.from ?? next
 
-  function submit() {
+  async function submit() {
     if (emailError || passwordError) {
       setShowErrors(true)
       return
     }
-    signIn()
-    navigate(from, { replace: true })
+    setIsSending(true)
+    setFailed(false)
+    const ok = await signIn(email.trim(), password)
+    setIsSending(false)
+    if (ok) navigate(from, { replace: true })
+    else setFailed(true)
   }
 
   return (
     <StepLayout
       title="Admin sign in"
-      footer={<Button className="h-12 w-full text-base" onClick={submit}>Sign in</Button>}
+      footer={
+        <Button className="h-12 w-full text-base" onClick={submit} disabled={isSending}>
+          {isSending ? "Signing in…" : "Sign in"}
+        </Button>
+      }
     >
-      <p className="text-muted-foreground">
-        Only the admin signs in. Demo: any email and password work. The server will check them later.
-      </p>
+      <p className="text-muted-foreground">Only the admin signs in.</p>
+
+      {/* One message for every failure, so it does not tell which part was wrong. */}
+      {failed && (
+        <p role="alert" className="text-sm text-destructive">
+          Could not sign in. Check your email and password, then try again.
+        </p>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
