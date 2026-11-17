@@ -29,7 +29,7 @@ export function BookingEditPage() {
   const [step, setStep] = useState<"view" | "slot" | "details">("view")
   const [selection, setSelection] = useState<SlotSelection | null>(null)
   const [isSaved, setIsSaved] = useState(false)
-
+  const [saveError, setSaveError] = useState<string | null>(null)
   const booking = bookings.find((b) => b.id === id)
   // The page that opened this booking (the day view sends its URL with the date). Default: the list.
   const from = (useLocation().state as { from?: string } | null)?.from
@@ -86,20 +86,23 @@ export function BookingEditPage() {
         initial={booking}
         submitLabel="Save changes"
         onBack={() => setStep("slot")}
-        onSubmit={(details) => {
-          updateBooking({ ...booking, ...selection, ...details })
+        onSubmit={async (details) => {
+          const error = await updateBooking({ ...booking, ...selection, ...details })
+          setSaveError(error)
+          setIsSaved(!error)
           setSelection(null)
-          setIsSaved(true)
           setStep("view")
         }}
       />
     )
   }
 
-  const remove = () => {
-    removeBooking(booking.id)
-    if (from) navigate(from)
-    else navigate("..", { relative: "path", state: { removed: booking } }) // the list says what was removed
+  const remove = async () => {
+    const error = await removeBooking(booking.id)
+    if (error) {
+      setSaveError(error)
+      return
+    }
   }
 
   return (
@@ -107,12 +110,13 @@ export function BookingEditPage() {
       title="Booking"
       onBack={backToList}
       footer={
-        <Button className="h-12 w-full text-base" onClick={() => { setIsSaved(false); setStep("slot") }}>
+        <Button className="h-12 w-full text-base" onClick={() => { setIsSaved(false); setSaveError(null); setStep("slot") }}>
           Edit booking
         </Button>
       }
     >
       {isSaved && <p role="status" className="font-medium">Changes saved.</p>}
+      {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
       <BookingSummary selection={booking} details={booking} />
       <BookingHistory booking={booking} />
       <RemoveBookingButton onConfirm={remove} />

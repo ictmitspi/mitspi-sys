@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
+import { useBookings } from "@/features/booking/bookings-store"
 import { BookingInfoSheet } from "@/features/booking/components/booking-info-sheet"
 import { DateStrip } from "@/features/booking/components/date-strip"
 import { SlotGrid } from "@/features/booking/components/slot-grid"
@@ -37,6 +38,12 @@ export function SlotStep({ bookings, initial, onContinue, title = "Book a room",
   const { entries } = useSchoolCalendar()
   const dayEntries = entriesOn(entries, dateKey)
   const statusOf = (slotStart: number) => slotStatus(bookings, roomId, dateKey, slotStart)
+  const { loadDay, loadFailed } = useBookings()
+
+  // Get the taken times fresh each time the room or date changes.
+  useEffect(() => {
+    loadDay(roomId, dateKey)
+  }, [roomId, dateKey])
 
   function changeRoom(id: string) {
     setRoomId(id)
@@ -140,6 +147,11 @@ export function SlotStep({ bookings, initial, onContinue, title = "Book a room",
 
         <section className="space-y-2">
           <h2 className="font-medium">Time</h2>
+          {loadFailed && (
+            <p role="alert" className="text-sm text-destructive">
+              Could not load the booked times. Check your connection.
+            </p>
+          )}
           <SlotGrid
             statusOf={statusOf}
             range={range}

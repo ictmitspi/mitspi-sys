@@ -14,7 +14,7 @@ import { formatDate, formatDuration, formatMonth, formatTimeRange, toDateKey, to
 
 // Bookings dashboard: filter, count, list and download.
 export function BookingsPage() {
-  const { bookings } = useBookings()
+  const { bookings, loadFailed } = useBookings()
   const { lists } = useSchoolLists()
   const thisMonth = toMonthKey(toDateKey(today()))
   const [filters, setFilters] = useState({ ...NO_FILTERS, month: thisMonth })
@@ -53,6 +53,11 @@ export function BookingsPage() {
           </Button>
         </div>
       </div>
+      {loadFailed && (
+        <p role="alert" className="text-sm text-destructive">
+          Could not load the bookings. Check your connection, then reload the page.
+        </p>
+      )}
 
       {removed && (
         <p role="status" className="rounded-lg border px-4 py-3 print:hidden">

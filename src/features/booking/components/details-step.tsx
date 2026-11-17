@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,13 +14,18 @@ type Props = {
   onSubmit: (details: BookingDetails) => void
   initial?: BookingDetails
   submitLabel?: string
+  error?: string | null
+  isSending?: boolean
+  children?: ReactNode // extra fields at the end, like the robot check
 }
 
 // Long subject names wrap onto a second line instead of being cut off.
 const SELECT_TRIGGER =
   "w-full min-h-12 py-2 text-left text-base whitespace-normal data-[size=default]:h-auto *:data-[slot=select-value]:line-clamp-none"
 
-export function DetailsStep({ selection, onBack, onSubmit, initial, submitLabel = "Confirm booking" }: Props) {
+export function DetailsStep({
+  selection, onBack, onSubmit, initial, submitLabel = "Confirm booking", error, isSending, children,
+}: Props) {
   const { lists } = useSchoolLists()
   const [classId, setClassId] = useState(initial?.classId ?? "")
   const [teacherName, setTeacherName] = useState(initial?.teacherName ?? "")
@@ -44,9 +49,12 @@ export function DetailsStep({ selection, onBack, onSubmit, initial, submitLabel 
       title="Booking details"
       onBack={onBack}
       footer={
-        <Button className="h-12 w-full text-base" onClick={submit}>
-          {submitLabel}
-        </Button>
+        <div className="space-y-2">
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          <Button className="h-12 w-full text-base" onClick={submit} disabled={isSending}>
+            {isSending ? "Saving…" : submitLabel}
+          </Button>
+        </div>
       }
     >
       <BookingSummary selection={selection} />
@@ -99,6 +107,7 @@ export function DetailsStep({ selection, onBack, onSubmit, initial, submitLabel 
         </Select>
         {showErrors && subjectError && <p className="text-sm text-destructive">{subjectError}</p>}
       </div>
+      {children}
     </StepLayout>
   )
 }

@@ -29,6 +29,18 @@ export function fromDateKey(key: string) {
   return new Date(year, month - 1, day)
 }
 
+// Database time to minutes from midnight. Example: "08:30:00" → 510
+export function fromDbTime(time: string) {
+  const [hours, minutes] = time.split(":").map(Number)
+  return hours * 60 + minutes
+}
+
+// Minutes from midnight to database time. Example: 510 → "08:30"
+export function toDbTime(minutes: number) {
+  const hours = String(Math.floor(minutes / 60)).padStart(2, "0")
+  return `${hours}:${String(minutes % 60).padStart(2, "0")}`
+}
+
 export function nowMinutes() {
   const now = new Date()
   return now.getHours() * 60 + now.getMinutes()
