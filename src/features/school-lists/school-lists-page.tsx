@@ -1,6 +1,7 @@
 import type { ListKey } from "@/data/school"
 import { useSchoolLists } from "@/data/school-lists"
 import { ListEditor } from "@/features/school-lists/components/list-editor"
+import { WhatsappForm } from "@/features/school-lists/components/whatsapp-form"
 
 const LISTS: { key: ListKey; title: string; noun: string; hasShortName: boolean }[] = [
   { key: "rooms", title: "Rooms", noun: "room", hasShortName: false },
@@ -34,6 +35,7 @@ export function SchoolListsPage() {
           onSetActive={(id, isActive) => setItemActive(key, id, isActive)}
         />
       ))}
+      <WhatsappForm />
     </div>
   )
 }

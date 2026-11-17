@@ -1,7 +1,8 @@
-import { ADMIN_WHATSAPP, SCHOOL_NAME } from "@/data/school"
+import { useEffect, useState } from "react"
+import { SCHOOL_NAME } from "@/data/school"
+import { fetchAdminWhatsapp } from "@/data/school-setting"
 
 const MESSAGE = `Salam, I need help with the room booking at ${SCHOOL_NAME}.`
-const WHATSAPP_URL = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(MESSAGE)}`
 
 // WhatsApp logo from Simple Icons 16.35.0 (CC0).
 const WHATSAPP_PATH =
@@ -10,9 +11,19 @@ const WHATSAPP_PATH =
 // Floating button, bottom-right, above the sticky Continue bar (StepLayout footer).
 // White with a green logo: quieter than the purple primary button, still known as WhatsApp.
 export function ContactAdmin() {
+  
+  const [number, setNumber] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchAdminWhatsapp().then(setNumber, () => setNumber(null))
+  }, [])
+
+  // No button until the number has loaded, or when it failed. Teachers can still book.
+  if (!number) return null
+
   return (
     <a
-      href={WHATSAPP_URL}
+      href={`https://wa.me/${number}?text=${encodeURIComponent(MESSAGE)}`}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="WhatsApp the admin"
