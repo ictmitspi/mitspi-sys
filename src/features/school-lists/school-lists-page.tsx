@@ -10,7 +10,7 @@ const LISTS: { key: ListKey; title: string; noun: string; hasShortName: boolean 
 
 // Admin: the rooms, classes and subjects that teachers choose from.
 export function SchoolListsPage() {
-  const { lists, addItem, editItem, setItemActive } = useSchoolLists()
+  const { lists, saveError, addItem, editItem, setItemActive } = useSchoolLists()
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-8 px-4 pt-6 pb-10">
@@ -20,6 +20,7 @@ export function SchoolListsPage() {
           Teachers choose from these lists when they book. Hide an item to stop new bookings with it.
           Old bookings keep it.
         </p>
+        {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
       </div>
       {LISTS.map(({ key, title, noun, hasShortName }) => (
         <ListEditor

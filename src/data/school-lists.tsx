@@ -1,10 +1,13 @@
-import { createContext, useContext, useState, type ReactNode } from "react"
-import { DEFAULT_LISTS, type ListItem, type ListKey, type SchoolLists } from "@/data/school"
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { Button } from "@/components/ui/button"
+import type { ListItem, ListKey, SchoolLists } from "@/data/school"
+import { supabase } from "@/lib/supabase"
 
 export type ItemFields = { name: string; shortName?: string }
 
 type SchoolListsStore = {
   lists: SchoolLists
+  saveError: string | null
   addItem: (key: ListKey, fields: ItemFields) => void
   editItem: (key: ListKey, id: string, fields: ItemFields) => void
   setItemActive: (key: ListKey, id: string, isActive: boolean) => void
@@ -12,21 +15,83 @@ type SchoolListsStore = {
 
 const SchoolListsContext = createContext<SchoolListsStore | null>(null)
 
-// Rooms, classes and subjects. Every feature reads them; the admin changes them.
-// UI-only MVP: changes reset when the page reloads. Later: the API saves them.
-export function SchoolListsProvider({ children }: { children: ReactNode }) {
-  const [lists, setLists] = useState<SchoolLists>(DEFAULT_LISTS)
+const TABLES: Record<ListKey, string> = { rooms: "room", classes: "school_class", subjects: "subject" }
 
-  function update(key: ListKey, change: (items: ListItem[]) => ListItem[]) {
-    setLists((current) => ({ ...current, [key]: change(current[key]) }))
+type ListRow = { id: number; name: string; short_name?: string | null; is_active: boolean }
+
+// The database uses number ids; the app uses text ids. Convert once, here.
+function toItem(row: ListRow): ListItem {
+  return { id: String(row.id), name: row.name, shortName: row.short_name ?? undefined, isActive: row.is_active }
+}
+
+// Only classes and subjects have a short_name column.
+function toRow(fields: ItemFields): { name: string; short_name?: string } {
+  return fields.shortName === undefined ? { name: fields.name } : { name: fields.name, short_name: fields.shortName }
+}
+
+async function fetchList(key: ListKey) {
+  const { data, error } = await supabase.from(TABLES[key]).select("*").order("id")
+  if (error) throw error
+  return (data as ListRow[]).map(toItem)
+}
+
+// Rooms, classes and subjects. Every feature reads them; the admin changes them.
+// Everyone may read them. RLS lets only the admin add or change them.
+export function SchoolListsProvider({ children }: { children: ReactNode }) {
+  const [lists, setLists] = useState<SchoolLists | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  async function load() {
+    setLoadFailed(false)
+    try {
+      const [rooms, classes, subjects] = await Promise.all([
+        fetchList("rooms"), fetchList("classes"), fetchList("subjects"),
+      ])
+      setLists({ rooms, classes, subjects })
+    } catch {
+      setLoadFailed(true)
+    }
   }
 
+  useEffect(() => {
+    void load()
+  }, [])
+
+  // The screen changes only after the database saved the row.
+  async function save(key: ListKey, request: PromiseLike<{ data: unknown; error: unknown }>, id?: string) {
+    const { data, error } = await request
+    if (error) {
+      setSaveError("Could not save the change. Check your connection, then try again.")
+      return
+    }
+    setSaveError(null)
+    const item = toItem(data as ListRow)
+    setLists((current) => current && {
+      ...current,
+      [key]: id ? current[key].map((i) => (i.id === id ? item : i)) : [...current[key], item],
+    })
+  }
+
+  if (loadFailed) {
+    return (
+      <div role="alert" className="mx-auto max-w-md space-y-4 px-4 py-10 text-center">
+        <p>Could not load the rooms, classes and subjects. Check your connection.</p>
+        <Button className="h-12" onClick={load}>Try again</Button>
+      </div>
+    )
+  }
+  if (!lists) return <p className="px-4 py-10 text-center text-muted-foreground">Loading…</p>
+
+  const table = (key: ListKey) => supabase.from(TABLES[key])
   const store: SchoolListsStore = {
     lists,
-    addItem: (key, fields) => update(key, (items) => [...items, { id: crypto.randomUUID(), ...fields, isActive: true }]),
-    editItem: (key, id, fields) => update(key, (items) => items.map((i) => (i.id === id ? { ...i, ...fields } : i))),
+    saveError,
+    addItem: (key, fields) => void save(key, table(key).insert(toRow(fields)).select().single()),
+    editItem: (key, id, fields) =>
+      void save(key, table(key).update(toRow(fields)).eq("id", Number(id)).select().single(), id),
     setItemActive: (key, id, isActive) =>
-      update(key, (items) => items.map((i) => (i.id === id ? { ...i, isActive } : i))),
+      void save(key, table(key).update({ is_active: isActive }).eq("id", Number(id)).select().single(), id),
   }
 
   return <SchoolListsContext value={store}>{children}</SchoolListsContext>
