@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, type ReactNode } from "react"
-import publicHolidays from "@/data/holidays.json"
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import type { HolidayRow } from "@/lib/holiday-feed"
+import { supabase } from "@/lib/supabase"
 
 export type EntryKind = "public-holiday" | "school-holiday" | "event"
 
@@ -16,35 +16,107 @@ export const KIND_LABEL: Record<EntryKind, string> = {
   event: "Event",
 }
 
-function toEntries(rows: HolidayRow[]): CalendarEntry[] {
-  return rows.map((r) => ({
-    id: `public-${r.date}-${r.name}`, kind: "public-holiday", name: r.name, startDate: r.date, endDate: r.date,
-  }))
+const ENTRY_COLUMNS = "id, kind, name, start_date, end_date"
+
+type EntryRow = { id: string; kind: string; name: string; start_date: string; end_date: string }
+
+// The database writes the kind as "SCHOOL_HOLIDAY"; the app as "school-holiday".
+function toEntry(row: EntryRow): CalendarEntry {
+  return {
+    id: row.id,
+    kind: row.kind.toLowerCase().replace("_", "-") as EntryKind,
+    name: row.name,
+    startDate: row.start_date,
+    endDate: row.end_date,
+  }
 }
 
 type SchoolCalendarStore = {
   entries: CalendarEntry[]
+  loadFailed: boolean
+  saveError: string | null
   addEntry: (fields: EntryFields) => void
   editEntry: (id: string, fields: EntryFields) => void
   removeEntry: (id: string) => void
-  replacePublicHolidays: (rows: HolidayRow[]) => void
+  replacePublicHolidays: (rows: HolidayRow[]) => Promise<void>
+}
+
+function toRow(fields: EntryFields) {
+  return {
+    kind: fields.kind.toUpperCase().replace("-", "_"),
+    name: fields.name,
+    start_date: fields.startDate,
+    end_date: fields.endDate,
+  }
 }
 
 const SchoolCalendarContext = createContext<SchoolCalendarStore | null>(null)
 
-// Public holidays (from src/data/holidays.json or the admin's update) plus the
+// Public holidays (from Google, through the admin's update) plus the
 // school holidays and events that the admin adds. Information only: no date is blocked.
-// UI-only MVP: changes reset when the page reloads. Later: the API saves them.
+// Everyone reads them. RLS lets only the admin add, change or remove them.
 export function SchoolCalendarProvider({ children }: { children: ReactNode }) {
-  const [entries, setEntries] = useState<CalendarEntry[]>(() => toEntries(publicHolidays))
+  const [entries, setEntries] = useState<CalendarEntry[]>([])
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  async function load() {
+    const { data, error } = await supabase.from("calendar_entry").select(ENTRY_COLUMNS)
+    if (error) {
+      setLoadFailed(true)
+      return
+    }
+    setLoadFailed(false)
+    setEntries((data as EntryRow[]).map(toEntry))
+  }
+
+  useEffect(() => {
+    void load()
+  }, [])
+
+    // Shows or clears the save error. Returns true when the save failed.
+  function saveFailed(error: unknown) {
+    setSaveError(error ? "Could not save the change. Check your connection, then try again." : null)
+    return Boolean(error)
+  }
+
+  // The screen changes only after the database saved the change.
+  async function addEntry(fields: EntryFields) {
+    const { data, error } = await supabase.from("calendar_entry").insert(toRow(fields)).select(ENTRY_COLUMNS).single()
+    if (saveFailed(error)) return
+    const saved = toEntry(data as EntryRow)
+    setEntries((current) => [...current, saved])
+  }
+
+  async function editEntry(id: string, fields: EntryFields) {
+    const { data, error } = await supabase
+      .from("calendar_entry").update(toRow(fields)).eq("id", id).select(ENTRY_COLUMNS).single()
+    if (saveFailed(error)) return
+    const saved = toEntry(data as EntryRow)
+    setEntries((current) => current.map((e) => (e.id === id ? saved : e)))
+  }
+
+  async function removeEntry(id: string) {
+    const { error } = await supabase.from("calendar_entry").delete().eq("id", id)
+    if (saveFailed(error)) return
+    setEntries((current) => current.filter((e) => e.id !== id))
+  }
+
+  // "Update from Google". One database call swaps all public holidays (07-calendar.sql).
+  async function replacePublicHolidays(rows: HolidayRow[]) {
+    const { error } = await supabase.rpc("replace_public_holidays", { p_rows: rows })
+    if (error) throw error
+    await load()
+  }
 
   const store: SchoolCalendarStore = {
     entries,
-    addEntry: (fields) => setEntries((current) => [...current, { id: crypto.randomUUID(), ...fields }]),
-    editEntry: (id, fields) => setEntries((current) => current.map((e) => (e.id === id ? { ...e, ...fields } : e))),
-    removeEntry: (id) => setEntries((current) => current.filter((e) => e.id !== id)),
-    replacePublicHolidays: (rows) =>
-      setEntries((current) => [...current.filter((e) => e.kind !== "public-holiday"), ...toEntries(rows)]),
+    loadFailed,
+    saveError,
+    addEntry,
+    editEntry,
+    removeEntry,
+    replacePublicHolidays,
   }
 
   return <SchoolCalendarContext value={store}>{children}</SchoolCalendarContext>

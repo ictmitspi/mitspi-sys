@@ -1,11 +1,11 @@
 import { parseHolidayFeed } from "@/lib/holiday-feed"
+import { supabase } from "@/lib/supabase"
 
-// Demo: the Vite dev server passes /holiday-feed on to Google (vite.config.ts).
-// Later: POST /api/admin/holidays/refresh, and the server fetches and checks the feed.
+// The holiday-feed Edge Function fetches Google's file for the browser (Google sends no CORS header).
 export async function downloadPublicHolidays(years: string[]) {
-  const response = await fetch("/holiday-feed")
-  if (!response.ok) throw new Error(`Holiday feed: HTTP ${response.status}`)
-  const rows = parseHolidayFeed(await response.text(), years)
+  const { data, error } = await supabase.functions.invoke("holiday-feed")
+  if (error) throw error
+  const rows = parseHolidayFeed(data as string, years)
   if (rows.length === 0) throw new Error("Holiday feed: no holidays found")
   return rows
 }

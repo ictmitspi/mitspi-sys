@@ -12,7 +12,7 @@ const byStartDate = (a: CalendarEntry, b: CalendarEntry) => a.startDate.localeCo
 // Admin: school holidays and events (typed by hand) and public holidays (from Google).
 // Teachers see all of them on the booking page. They do not block booking.
 export function HolidaysPage() {
-  const { entries, addEntry, editEntry, removeEntry, replacePublicHolidays } = useSchoolCalendar()
+  const { entries, loadFailed, saveError, addEntry, editEntry, removeEntry, replacePublicHolidays } = useSchoolCalendar()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [status, setStatus] = useState<UpdateStatus>({ state: "idle", message: "" })
 
@@ -26,10 +26,10 @@ export function HolidaysPage() {
     setStatus({ state: "working", message: "" })
     try {
       const rows = await downloadPublicHolidays(years)
-      replacePublicHolidays(rows)
+      await replacePublicHolidays(rows)
       setStatus({ state: "done", message: `Updated: ${rows.length} public holidays for ${years.join(" and ")}.` })
     } catch {
-      setStatus({ state: "failed", message: "Could not download the holidays. The old list stays. Try again later." })
+      setStatus({ state: "failed", message: "Could not update the holidays. The old list stays. Try again later." })
     }
   }
 
@@ -40,6 +40,12 @@ export function HolidaysPage() {
         <p className="text-muted-foreground">
           Teachers see these on the booking page as a note. They can still book on these days.
         </p>
+        {loadFailed && (
+          <p role="alert" className="text-sm text-destructive">
+            Could not load the holidays and events. Check your connection, then reload the page.
+          </p>
+        )}
+        {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
       </div>
 
       <section className="space-y-3" aria-labelledby="own-title">
