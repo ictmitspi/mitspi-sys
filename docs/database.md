@@ -93,7 +93,7 @@ Why lookup tables (`room`, `school_class`, `subject`) and not text?
 The dashboard filters by them, and a rename changes one row, not every booking.
 
 Starting data: the school's 10 classes and 25 subjects with short forms (20 Oct 2026)
-and the 2 rooms (Makmal Komputer 1 and 2), as in `DEFAULT_LISTS` in `src/data/school.ts`.
+and the 2 rooms (Makmal Komputer 1 and 2), in `supabase/sql/05-starting-data.sql`.
 
 ## 3. How double booking is stopped
 

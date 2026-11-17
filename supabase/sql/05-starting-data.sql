@@ -1,4 +1,4 @@
--- Step 5: the school's starting lists (from DEFAULT_LISTS in src/data/school.ts).
+-- Step 5: the school's starting lists (20 Oct 2026).
 -- Run once, after 04-admin-functions.sql. Later the admin keeps them on "School lists".
 
 INSERT INTO room (name) VALUES
