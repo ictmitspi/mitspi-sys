@@ -66,14 +66,14 @@ export function EntryForm({ idPrefix, legend, submitLabel, onSubmit, initial, on
             onChange={(e) => { setName(e.target.value); setErrors({ ...errors, name: "" }) }} />
         </Field>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3">
           <Field id={`${idPrefix}-start`} label="First day" error={errors.startDate}>
             <Input id={`${idPrefix}-start`} type="date" className="h-12 appearance-none text-base" value={startDate}
               aria-invalid={!!errors.startDate}
               onChange={(e) => { setStartDate(e.target.value); setErrors({ ...errors, startDate: "", endDate: "" }) }} />
           </Field>
           <Field id={`${idPrefix}-end`} label="Last day (optional)" error={errors.endDate}>
-            <Input id={`${idPrefix}-end`} type="date" className="h-12 appearance-nonetext-base" value={endDate} min={startDate}
+            <Input id={`${idPrefix}-end`} type="date" className="h-12 appearance-none text-base" value={endDate} min={startDate}
               aria-invalid={!!errors.endDate}
               onChange={(e) => { setEndDate(e.target.value); setErrors({ ...errors, endDate: "" }) }} />
           </Field>
