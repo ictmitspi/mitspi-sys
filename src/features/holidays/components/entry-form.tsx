@@ -66,7 +66,7 @@ export function EntryForm({ idPrefix, legend, submitLabel, onSubmit, initial, on
             onChange={(e) => { setName(e.target.value); setErrors({ ...errors, name: "" }) }} />
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Field id={`${idPrefix}-start`} label="First day" error={errors.startDate}>
             <Input id={`${idPrefix}-start`} type="date" className="h-12 appearance-none text-base" value={startDate}
               aria-invalid={!!errors.startDate}
