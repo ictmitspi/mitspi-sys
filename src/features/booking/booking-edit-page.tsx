@@ -18,8 +18,9 @@ import { BookingHistory } from "@/features/booking/components/booking-history"
 import { BookingSummary } from "@/features/booking/components/booking-summary"
 import { DetailsStep } from "@/features/booking/components/details-step"
 import { SlotStep } from "@/features/booking/components/slot-step"
+import { TellTeacherLink } from "@/features/booking/components/tell-teacher-link"
 import { hasStarted } from "@/features/booking/slots"
-import type { SlotSelection } from "@/features/booking/types"
+import type { Booking, SlotSelection } from "@/features/booking/types"
 
 // Admin: see one booking, edit it (same steps as booking) or remove it.
 export function BookingEditPage() {
@@ -30,10 +31,25 @@ export function BookingEditPage() {
   const [selection, setSelection] = useState<SlotSelection | null>(null)
   const [isSaved, setIsSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [removed, setRemoved] = useState<Booking | null>(null)
   const booking = bookings.find((b) => b.id === id)
   // The page that opened this booking (the day view sends its URL with the date). Default: the list.
   const from = (useLocation().state as { from?: string } | null)?.from
   const backToList = () => (from ? navigate(from) : navigate("..", { relative: "path" }))
+
+  if (removed) {
+    return (
+      <StepLayout
+        title="Booking removed"
+        onBack={backToList}
+        footer={<Button className="h-12 w-full text-base" onClick={backToList}>Back to bookings</Button>}
+      >
+        <p role="status" className="font-medium">The time is free for other teachers.</p>
+        <BookingSummary selection={removed} details={removed} />
+        <TellTeacherLink booking={removed} change="removed" />
+      </StepLayout>
+    )
+  }
 
   if (!booking) {
     return (
@@ -103,6 +119,7 @@ export function BookingEditPage() {
       setSaveError(error)
       return
     }
+    setRemoved(booking)
   }
 
   return (
@@ -115,7 +132,12 @@ export function BookingEditPage() {
         </Button>
       }
     >
-      {isSaved && <p role="status" className="font-medium">Changes saved.</p>}
+      {isSaved && (
+        <>
+          <p role="status" className="font-medium">Changes saved.</p>
+          <TellTeacherLink booking={booking} change="changed" />
+        </>
+      )}
       {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
       <BookingSummary selection={booking} details={booking} />
       <BookingHistory booking={booking} />

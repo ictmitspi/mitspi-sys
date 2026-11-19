@@ -77,7 +77,7 @@ An admin page opened while signed out goes to sign-in first, then back to that p
 **Hide, not delete:** a hidden room, class or subject leaves the booking form,
 but old bookings and the filters keep it. At least one item in each list stays in use.
 
-### Telling the teacher about a change (plan, not built)
+### Telling the teacher about a change (option A built, Nov 2026)
 
 The app stores no teacher phone numbers: a phone number is personal data
 (Malaysia PDPA 2010). Options, simplest first:
@@ -88,7 +88,8 @@ The app stores no teacher phone numbers: a phone number is personal data
 | B. WhatsApp bot (WhatsApp Business Platform, Cloud API) | The server sends the message by itself. | Each teacher's number and consent, Meta business verification, approved message templates, a cost per message, secure storage and opt-out. |
 | C. Email | The server emails the teacher. | Each teacher's school email. |
 
-Start with A. Choose B only if the school wants automatic messages and agrees to store numbers.
+Option A is built: `src/features/booking/components/tell-teacher-link.tsx`.
+The link has no number (`wa.me/?text=…`). Choose B only if the school wants automatic messages and agrees to store numbers.
 
 ### Holidays and events (built, information only)
 

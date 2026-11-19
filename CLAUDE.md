@@ -35,6 +35,7 @@ One system for the school: new functions are added as new features (see "Add a n
 ## Roles (answered 20 Oct 2026)
 - Teacher: books a room. No login. Cannot edit or remove; asks the admin.
 - Admin: one account for now (answered 20 Oct 2026). Signs in. Sees the dashboard, downloads reports, edits and removes bookings.
+  After an edit or remove, "Tell the teacher on WhatsApp" opens WhatsApp with the message written.
 - Admin also keeps rooms, classes and subjects on "School lists" (hide, not delete).
 - Admin keeps school holidays (cuti sekolah) and events up to date each term (answered 20 Oct 2026).
 - Admin sets the WhatsApp number behind the teachers' contact button ("School lists", bottom).
@@ -109,7 +110,6 @@ One system for the school: new functions are added as new features (see "Add a n
 Never put a secret in code, a commit, logs or chat. A change to a `VITE_*` value needs a new build (push).
 
 ## Later
-- Tell the teacher about an admin change: "Send on WhatsApp" button first (no numbers stored).
 - A screen for `booking_history` (today the admin reads it in the Supabase dashboard).
 
 ## Avoid AI slop
