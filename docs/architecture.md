@@ -3,8 +3,8 @@
 High-level design: who uses the app, the flows, the system parts, the API and security.
 The database is in [database.md](database.md).
 
-Status: the frontend flow is built (UI only, mock data). The backend is a plan:
-Cloudflare Pages + Supabase (decided 21 Oct 2026). Spring Boot is no longer in the plan.
+Status: live at https://mitspi.pages.dev since 19 Nov 2026.
+Cloudflare Pages (site) + Supabase (database, Auth, Edge Functions) + Cloudflare Turnstile (robot check).
 
 ## 1. Requirements (from the school, 20 Oct 2026)
 
@@ -50,7 +50,7 @@ flowchart TD
   F -->|Make another booking| B
 ```
 
-The "Slot still free?" check happens on the server (later). Today the demo always says yes.
+The "Slot still free?" check happens in the database (the `booking_slot` key), not in the browser.
 
 ### Admin: manage bookings
 
@@ -100,35 +100,22 @@ Three kinds, one list (`src/data/school-calendar.tsx`):
 
 | Kind | Where it comes from | Who changes it |
 |---|---|---|
-| Public holiday | Google's public Malaysia holiday calendar: national + Selangor, plus Hari Keputeraan Sultan Selangor (11 Dec), which the feed does not have | Admin: "Update from Google" button. Developer: `node scripts/fetch-holidays.mjs` for the starting list |
+| Public holiday | Google's **official** Malaysia holiday calendar (`en.malaysia.official`): national + Selangor, plus Hari Keputeraan Sultan Selangor (11 Dec), which the feed does not have | Admin: "Update from Google" button |
 | School holiday (cuti) | Typed by the admin; one day or a range | Admin: add, change, remove |
 | Event | Typed by the admin; one day or a range | Admin: add, change, remove |
 
-| Part | Today (demo) | Later |
-|---|---|---|
-| Feed source | Google ICS feed, no API key. Free APIs checked on 20 Oct 2026: Nager.Date and OpenHolidays have no Malaysia data. | Same |
-| Filter rules | `src/lib/holiday-feed.ts`, shared by the script and the button | The server uses the same rules |
-| "Update from Google" | The browser cannot read the feed (no CORS), so the Vite dev server forwards `/holiday-feed`. Works only with `npm run dev`. | Edge Function `refresh-holidays`: fetches the fixed feed URL and replaces the public holidays |
-| Starting list | `src/data/holidays.json` (from the script, committed) | The database |
-| Accuracy | Islamic dates are estimates until announced. Check against the official list (Prime Minister's Department). | Same |
+| Part | How |
+|---|---|
+| Feed source | Google ICS feed, no API key. Free APIs checked on 20 Oct 2026: Nager.Date and OpenHolidays have no Malaysia data. |
+| Feed change (19 Nov 2026) | Google's plain `en.malaysia` calendar now marks every day "Observance", so it cannot tell public holidays apart. Use `en.malaysia.official`, which still says "Public holiday". |
+| Filter rules | `src/lib/holiday-feed.ts`: keeps "Public holiday" (national) and "Public holiday in … Selangor", including tentative dates. If the feed gives none, it returns none, so the old list stays. |
+| "Update from Google" | The browser cannot read Google's feed (no CORS). The `holiday-feed` Edge Function fetches it for a signed-in admin; the browser parses it, then `replace_public_holidays` swaps the rows in one transaction. |
+| Backup copy | `node scripts/fetch-holidays.mjs` writes `src/data/holidays.json`. The app does not read it. |
+| Accuracy | Islamic dates are estimates until announced ("tentative"). Check against the official list (Prime Minister's Department). |
 
 ## 4. System architecture
 
-### Now: UI-only MVP
-
-```mermaid
-flowchart LR
-  T[Teacher<br/>phone browser] --> SPA
-  A[Admin<br/>laptop browser] --> SPA
-  subgraph SPA[React app - Vite]
-    UI[Pages and components] --> Store[BookingsProvider<br/>SchoolListsProvider<br/>AuthProvider - mock]
-    Store --> Mock[(Mock bookings and lists<br/>in memory)]
-  end
-```
-
-Data resets when the page reloads. The admin sign-in accepts any password.
-
-### Later: Cloudflare Pages + Supabase (decided 21 Oct 2026)
+### Cloudflare Pages + Supabase (decided 21 Oct 2026, live 19 Nov 2026)
 
 All parts are on free plans. No server to set up or keep running.
 
@@ -143,11 +130,15 @@ flowchart LR
   EF1 -->|create_booking| DB
   T -->|lists, availability, calendar| DB[(Supabase Postgres<br/>RLS on every table)]
   A -->|signed in: Supabase Auth| DB
-  A -->|Update from Google| EF2[Edge Function<br/>refresh-holidays]
+  A -->|Update from Google| EF2[Edge Function<br/>holiday-feed]
   EF2 --> G[Google holiday feed]
-  EF2 --> DB
+  A -->|replace_public_holidays| DB
   GA[GitHub Actions<br/>Sun + Wed] -->|keep-alive read| DB
 ```
+
+Inside the app, pages talk only to the stores, and only the stores talk to Supabase:
+pages → stores (`bookings-store.tsx`, `school-lists.tsx`, `school-calendar.tsx`, `school-setting.ts`,
+`auth-store.tsx`) → `src/lib/supabase.ts` → Supabase.
 
 | Part | Job |
 |---|---|
@@ -155,11 +146,8 @@ flowchart LR
 | Cloudflare Pages | Serves the React build. HTTPS, CDN and DDoS protection are built in. |
 | Cloudflare Turnstile | Checks that a person, not a script, sends the booking form. |
 | Supabase Database (Postgres) | All data. RLS (row level security) rules decide who may read or write each row. |
-| Supabase Auth | Admin sign-in (email + password). Replaces the mock. Sign-ups are turned off. |
-| Supabase Edge Functions | `create-booking` (checks Turnstile, then saves) and `refresh-holidays`. |
-
-Only the store files in the frontend change (`bookings-store.tsx`, `school-lists.tsx`,
-`school-calendar.tsx`, `auth-store.tsx`). They call Supabase instead of React state. The pages stay the same.
+| Supabase Auth | Admin sign-in (email + password). Sign-ups are turned off. |
+| Supabase Edge Functions | `create-booking` (checks Turnstile, then saves; Verify JWT off, because teachers do not sign in) and `holiday-feed` (fetches Google's feed; Verify JWT on). Code in `supabase/functions/`, deployed in the Supabase dashboard. |
 
 #### Free plan limits (checked 21 Oct 2026; check again before launch)
 
@@ -169,45 +157,37 @@ Only the store files in the frontend change (`bookings-store.tsx`, `school-lists
 | Supabase | 500 MB database, 2 projects, 500,000 Edge Function calls a month | Years of bookings fit |
 | Supabase | **Pauses after 7 days of low activity.** Restore from the dashboard within 90 days. | Keep-alive job (below) |
 | Supabase | **No automatic backups** on the free plan | The admin downloads the CSV each month |
-| GitHub Actions | Scheduled jobs in a **public** repo stop after 60 days with no commits | Use a private repo |
+| GitHub Actions | Scheduled jobs in a **public** repo stop after 60 days with no commits | The repo is private |
 
 #### Deploy (GitHub → Cloudflare Pages)
 
-1. Put the project in a private GitHub repo.
-2. Cloudflare dashboard: Workers & Pages → Create → Pages → Connect to Git → pick the repo.
-3. Settings: preset `React (Vite)`, build command `npm run build`, output `dist`, env `NODE_VERSION` = `22`.
-4. Env values for the build: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_TURNSTILE_SITE_KEY`.
-   These are public by design (they end up in the browser). RLS protects the data, not these keys.
-5. Every push to `main` deploys. Other branches get a preview URL.
+The Cloudflare Pages project `mitspi` (account: the school's Cloudflare login) builds from the private repo `ictmitspi/mitspi-sys`.
 
-The project has no `404.html`, so Cloudflare sends every URL (`/admin/day`) to `index.html`.
+1. Cloudflare dashboard: Workers & Pages → Create → "Continue to Pages" (Cloudflare calls it the legacy
+   Pages workflow; it still works) → Connect to Git → pick the repo. Do not use the Workers form.
+2. Settings: framework preset None, build command `npm run build`, output `dist`. The default Node (22) is fine.
+3. Variables (Settings → Variables and Secrets): `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`,
+   `VITE_TURNSTILE_SITE_KEY`. They are public by design (they end up in the browser). RLS protects the
+   data, not these keys. Vite copies them in at build time, so a change needs a new build.
+4. Every push to `main` deploys. Other branches get a preview URL.
 
-Secrets never go in the frontend or the repo: the Supabase service role key and the Turnstile
-secret key live only in Supabase Edge Function secrets (`supabase secrets set`).
+The project has no `404.html`, so Cloudflare sends every URL (`/admin/day`) to `index.html`. No `_redirects` file.
+
+Secrets never go in the frontend or the repo: the Turnstile secret key lives only in Supabase
+Edge Function secrets (`TURNSTILE_SECRET_KEY`), and Supabase gives its own secret key to Edge Functions.
+
+Edge Functions are not part of the git deploy. After a change in `supabase/functions/`, paste the code
+into the function in the Supabase dashboard (Edge Functions → the function → Code) and deploy it there.
 
 #### Keep-alive job (stops the Supabase pause)
 
-A scheduled GitHub Actions job reads one row twice a week, Sunday and Wednesday, 8:00 AM Malaysia time.
-Twice a week leaves a margin if one run fails. It matters most in the long school holidays.
+`.github/workflows/keep-alive.yml` reads one row twice a week, Sunday and Wednesday, 9:00 AM Malaysia time.
+The longest gap is 4 days, under the 7-day limit, with a margin if one run fails.
+It matters most in the long school holidays.
 
-```yaml
-# .github/workflows/keep-supabase-awake.yml
-name: Keep Supabase awake
-on:
-  schedule:
-    - cron: "0 0 * * 0,3" # 00:00 UTC = 8:00 AM MYT, Sunday and Wednesday
-  workflow_dispatch: # run by hand from the Actions tab
-jobs:
-  ping:
-    runs-on: ubuntu-latest
-    steps:
-      - run: >
-          curl --fail --silent --show-error
-          "${{ secrets.SUPABASE_URL }}/rest/v1/room?select=id&limit=1"
-          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}"
-```
-
-- It reads one room id with the public key. It needs no secret power.
+- It reads one room id with the publishable key (GitHub repository secrets `SUPABASE_URL` and
+  `SUPABASE_PUBLISHABLE_KEY`). It needs no secret power.
+- Test it by hand: GitHub → Actions → Keep Supabase Awake → Run workflow. A good run logs `[{"id":1}]`.
 - `--fail` makes the run red in GitHub if Supabase does not answer, and GitHub emails the repo owner.
 - Not an official Supabase feature. Their docs say "a few requests each day" keep a project active,
   and the only official fix is the Pro plan. If the project still pauses, restore it in the dashboard
@@ -219,10 +199,12 @@ jobs:
 flowchart TD
   App[src/app<br/>App, router, navbar, sidebar, RequireAdmin, pages.ts]
   App --> FB[src/features/booking<br/>book page, dashboard, edit page, store, filters, CSV rows]
-  App --> FL[src/features/school-lists<br/>School lists page, list editor]
-  App --> FA[src/features/auth<br/>sign-in page, auth store - mock]
-  FB --> Shared[src/components · src/lib · src/data incl. school-lists store]
+  App --> FL[src/features/school-lists<br/>School lists page, list editor, WhatsApp number form]
+  App --> FH[src/features/holidays<br/>Holidays and events page, entry form]
+  App --> FA[src/features/auth<br/>sign-in page, auth store]
+  FB --> Shared[src/components · src/lib · src/data stores]
   FL --> Shared
+  FH --> Shared
   FA --> Shared
   Shared --> UI[src/components/ui - shadcn]
 ```
@@ -240,9 +222,9 @@ Rules: a feature never imports another feature. Only `src/app` joins them.
 | `/admin/lists` | School lists: rooms, classes, subjects | Admin |
 | `/admin/holidays` | Holidays and events: update public holidays, add school holidays and events | Admin |
 
-## 6. Data access plan (Supabase, later)
+## 6. Data access (Supabase)
 
-The browser talks to Supabase with the public (anon) key. RLS and database functions decide what is allowed.
+The browser talks to Supabase with the publishable key. RLS and database functions decide what is allowed.
 Details and SQL: [database.md](database.md) sections 4 and 5.
 
 | What | How | Who |
@@ -252,7 +234,8 @@ Details and SQL: [database.md](database.md) sections 4 and 5.
 | Free and booked times | Function `availability(room, date)`: time, class, subject, teacher name. Nothing else. | Everyone |
 | Holidays and events | Read `calendar_entry` | Everyone |
 | Add, change, remove a school holiday or event | Write `calendar_entry` | Admin (RLS) |
-| Update public holidays | Edge Function `refresh-holidays`: fixed feed URL, replaces the public holidays in one transaction | Admin (checks the sign-in token) |
+| Update public holidays | Edge Function `holiday-feed` gets the fixed feed URL (Verify JWT checks the sign-in token). The browser parses it, then calls `replace_public_holidays`, which swaps the rows in one transaction. | Admin (`is_admin()` in the function) |
+| Admin WhatsApp number | Read `school_setting` (everyone); update it (admin, RLS) | Everyone / Admin |
 | Make a booking | Edge Function `create-booking`: checks Turnstile, then calls `create_booking`. Answers "slot taken" if a slot is gone. | Everyone |
 | Dashboard list | Read `booking` with filters | Admin (RLS) |
 | Edit a booking | Function `update_booking`. "Slot taken" if the new time is gone; refused if it has started. | Admin (checked in the function) |
@@ -260,7 +243,7 @@ Details and SQL: [database.md](database.md) sections 4 and 5.
 | Sign in, sign out | `supabase.auth.signInWithPassword`, `signOut` | Admin |
 
 The browser cannot call `create_booking` directly. Only the Edge Function can (it uses the
-service role key, which only the server has). So every booking passes the Turnstile check.
+Supabase secret key, which only the server has). So every booking passes the Turnstile check.
 
 ### Two teachers book the same slot at the same time
 
@@ -302,7 +285,7 @@ The numbers are a first guess. Change them after the school has used the app for
 | A01 (privacy) | Teacher page | Shows who booked (name, class, subject) to anyone with the link: the school's choice (20 Oct 2026). `availability` returns no other field. |
 | A01 (SSRF), A08 Integrity | Holiday refresh | The feed URL is fixed in code, never taken from a request. Parse strictly, drop odd rows, keep the old list if the download fails or is empty. |
 | A02 Security Misconfiguration | Supabase project | RLS on for every table. Sign-ups off. Functions that write are `security definer` with a fixed `search_path`. |
-| A04 Cryptographic Failures | Keys and traffic | HTTPS only (Cloudflare, Supabase). Service role and Turnstile secret only in Edge Function secrets. Anon key and site key are public by design. |
+| A04 Cryptographic Failures | Keys and traffic | HTTPS only (Cloudflare, Supabase). Supabase secret key and Turnstile secret only in Edge Function secrets. Publishable key and site key are public by design. |
 | A05 Injection | All queries | supabase-js and PL/pgSQL parameters. No string-built SQL. |
 | A06 Insecure Design, API4 Resource Consumption | Public booking with no login | Turnstile plus the abuse limits above. |
 | A07 Authentication Failures | Admin sign-in | Supabase Auth (proven library, password hash, rate limits). No home-made login. |
@@ -329,3 +312,6 @@ The numbers are a first guess. Change them after the school has used the app for
 | Cloudflare Pages for hosting (21 Oct 2026) | Free, unlimited bandwidth, SPA links work with no setup, same account as Turnstile | Needs a GitHub repo for automatic deploys |
 | Keep-alive job twice a week (21 Oct 2026) | Stops the 7-day pause in school holidays | Not official; if Supabase changes the rule, restore by hand or pay for Pro |
 | Contact admin: one WhatsApp button (21 Oct 2026) | Teachers already use WhatsApp | The number is public in the page; use the school's number, not a personal one |
+| WhatsApp number kept by the admin in the app (19 Nov 2026) | The admin person changes; the school account stays. A new admin changes it without a developer. | One more table (`school_setting`, one row) |
+| Opening hours stay in code (19 Nov 2026) | They almost never change, and the database CHECK on `booking` holds them too | A change needs a developer: `school.ts` and the CHECK together |
+| Pages, not Workers, for the site (19 Nov 2026) | Static files only; short `pages.dev` link; no config file | Cloudflare calls Pages "legacy". If it is retired, move to Workers static assets (one `wrangler.jsonc`). |

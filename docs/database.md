@@ -1,7 +1,24 @@
 # Database design — MITSPI Room Booking
 
-Plan for Supabase (PostgreSQL), decided 21 Oct 2026. Access rules: RLS and database functions (section 5).
-Architecture and flows: [architecture.md](architecture.md).
+Supabase (PostgreSQL), project `ict-booking` (Singapore), live since 19 Nov 2026.
+Access rules: RLS and database functions (section 5). Architecture and flows: [architecture.md](architecture.md).
+
+**The SQL that was run is in `supabase/sql/`, files `01`–`08`, in order.** They rebuild the database
+on a new project. The SQL below is a summary for reading; when it differs, the files are right.
+
+| File | Makes |
+|---|---|
+| `01-tables.sql` | The 8 tables, indexes, RLS on |
+| `02-policies.sql` | `is_admin()`, the RLS policies, the `booking_history` trigger |
+| `03-teacher-functions.sql` | `create_booking` (and the first `availability`) |
+| `04-admin-functions.sql` | `update_booking`, `cancel_booking` |
+| `05-starting-data.sql` | 2 rooms, 10 classes, 25 subjects |
+| `06-availability-with-id.sql` | `availability` again, now with the booking id |
+| `07-calendar.sql` | `replace_public_holidays` + the starting public holidays |
+| `08-setting.sql` | `school_setting` (admin WhatsApp number) |
+
+The admin account is not in a file: create the user in Supabase Auth, then
+`INSERT INTO admin_user (id, name) VALUES ('<auth user id>', '<name>');`
 
 ## 1. Entity diagram
 
@@ -74,6 +91,10 @@ erDiagram
     date end_date
     uuid created_by FK "null for public holidays"
   }
+  SCHOOL_SETTING {
+    smallint id PK "always 1: one row"
+    varchar admin_whatsapp "60 + 8-10 digits"
+  }
 ```
 
 ## 2. Tables
@@ -88,6 +109,7 @@ erDiagram
 | `booking_history` | One admin edit or cancel of a booking, with the old values | A trigger writes it (section 5). Nobody can change or delete a row through the API. |
 | `admin_user` | A Supabase Auth user who is an admin | Supabase Auth keeps the email and password hash. This table only says "this user is an admin". |
 | `calendar_entry` | A public holiday, school holiday or event, one day or a range | Information only: no booking depends on it. A refresh replaces the `PUBLIC_HOLIDAY` rows in one transaction. |
+| `school_setting` | The one row of school settings: today only `admin_whatsapp` | Everyone reads it (the teachers' WhatsApp button); the admin updates it. No insert or delete policy. |
 
 Why lookup tables (`room`, `school_class`, `subject`) and not text?
 The dashboard filters by them, and a rename changes one row, not every booking.
@@ -196,6 +218,12 @@ CREATE TABLE calendar_entry (
 
 -- The booking page asks "what is on this day?"
 CREATE INDEX calendar_entry_dates_idx ON calendar_entry (start_date, end_date);
+
+-- One row only. The number behind the teachers' WhatsApp button.
+CREATE TABLE school_setting (
+  id             SMALLINT    PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  admin_whatsapp VARCHAR(12) NOT NULL CHECK (admin_whatsapp ~ '^60[0-9]{8,10}$')
+);
 ```
 
 The 30-minute rule (start on :00 or :30) and the abuse limits are checked in `create_booking` (section 5).
@@ -203,7 +231,10 @@ The 30-minute rule (start on :00 or :30) and the abuse limits are checked in `cr
 ## 5. Access rules: RLS and functions
 
 RLS is on for every table. A table with RLS and no matching policy refuses the request.
-Teachers use the public anon key; the admin is an `authenticated` user listed in `admin_user`.
+Teachers use the publishable key (role `anon`); the admin is an `authenticated` user listed in `admin_user`.
+
+An `UPDATE` or `DELETE` that RLS blocks gives **no error**, only 0 rows. So the app adds
+`.select().single()` to its writes: 0 rows then becomes an error, and the screen does not say "Saved".
 
 ```sql
 ALTER TABLE room           ENABLE ROW LEVEL SECURITY;
@@ -229,6 +260,9 @@ CREATE POLICY admin_change ON room FOR UPDATE TO authenticated USING (is_admin()
 
 CREATE POLICY read_all ON calendar_entry FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY admin_all ON calendar_entry FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+
+CREATE POLICY read_all     ON school_setting FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY admin_change ON school_setting FOR UPDATE TO authenticated USING (is_admin()) WITH CHECK (is_admin());
 
 -- Bookings: only the admin reads them directly. Nobody writes them directly: the functions below do.
 CREATE POLICY admin_read ON booking FOR SELECT TO authenticated USING (is_admin());
@@ -260,11 +294,11 @@ FOR EACH ROW EXECUTE FUNCTION log_booking_change();
 
 | Function | Who may call it | Does |
 |---|---|---|
-| `availability(room_id, date)` | anon, authenticated | Active bookings of that room and day: start, end, class, subject, teacher name. No other column. |
+| `availability(p_room_id, p_date)` | anon, authenticated | Active bookings of that room and day: id, start, end, class, subject, teacher name. No other column. |
 | `create_booking(...)` | **service_role only** (the `create-booking` Edge Function, after Turnstile) | Checks the input and limits, inserts the booking and its slots in one transaction |
 | `update_booking(id, ...)` | authenticated; first line checks `is_admin()` | Refuses a started booking. Deletes the old slots, inserts the new ones. Sets `updated_by`, `updated_at`. |
 | `cancel_booking(id)` | authenticated; first line checks `is_admin()` | Refuses a started booking. Sets `status = 'CANCELLED'`, deletes the slots. |
-| `replace_public_holidays(rows)` | service_role only (`refresh-holidays` Edge Function) | Deletes and inserts the `PUBLIC_HOLIDAY` rows in one transaction |
+| `replace_public_holidays(p_rows)` | authenticated; first line checks `is_admin()` | Refuses an empty list. Deletes and inserts the `PUBLIC_HOLIDAY` rows in one transaction. The admin's browser calls it after the `holiday-feed` Edge Function. |
 
 Every function is `SECURITY DEFINER SET search_path = public`, so it can write tables that the caller cannot.
 `REVOKE EXECUTE ... FROM public` first, then `GRANT EXECUTE` only to the roles in the table.
@@ -315,25 +349,28 @@ REVOKE EXECUTE ON FUNCTION create_booking FROM public, anon, authenticated;
 GRANT EXECUTE ON FUNCTION create_booking TO service_role;
 ```
 
-The Edge Function maps the errors to safe messages: `23505` → "This time was just taken",
-`too_many` → "Busy, try again in a minute", others → "Check the booking and try again".
+The Edge Function maps the errors to codes: `23505` → 409 `taken`, `too_many` → 429 `busy`,
+`too_long` → 400 `too_long`, a failed Turnstile check → 403 `robot`, others → 400 `invalid`.
+The app turns each code into a safe message (`CREATE_ERRORS` in `bookings-store.tsx`).
 
 ## 6. Main queries (supabase-js)
 
 ```ts
 // Teacher page: booked times for one room and day.
-supabase.rpc("availability", { room_id: roomId, date })
+supabase.rpc("availability", { p_room_id: Number(roomId), p_date: dateKey })
 
-// Admin dashboard. Each filter is added only when it is not "All".
-let query = supabase.from("booking")
-  .select("*, room(name), school_class(name, short_name), subject(name, short_name)")
-  .eq("status", "ACTIVE")
-  .gte("booking_date", monthStart).lt("booking_date", nextMonthStart)
-  .order("booking_date").order("start_time")
-if (classId !== ALL) query = query.eq("class_id", classId)
+// Teacher: make a booking (through the Edge Function, with the Turnstile token).
+supabase.functions.invoke("create-booking", { body: { roomId, date, start, end, classId, subjectId, teacherName, turnstileToken } })
+
+// Admin: all active bookings, and the change history. The dashboard filters them in the browser.
+supabase.from("booking").select(BOOKING_COLUMNS).eq("status", "ACTIVE")
+supabase.from("booking_history").select("booking_id, changed_at, old_values").order("changed_at")
 ```
 
 supabase-js sends every value as a parameter. Never build SQL or filter strings from user input.
+
+The database uses number ids and `"08:30:00"` times; the app uses text ids and minutes from midnight.
+Each store converts in one place (`toBooking`, `toItem`, `toEntry`) with `fromDbTime` / `toDbTime` in `src/lib/time.ts`.
 
 ## 7. Frontend type → database
 
