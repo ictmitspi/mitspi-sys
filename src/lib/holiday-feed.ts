@@ -3,7 +3,7 @@
 // so both keep the same holidays. No imports: Node runs this file as it is.
 
 export const HOLIDAY_FEED_URL =
-  "https://calendar.google.com/calendar/ical/en.malaysia%23holiday%40group.v.calendar.google.com/public/basic.ics"
+  "https://calendar.google.com/calendar/ical/en.malaysia.official%23holiday%40group.v.calendar.google.com/public/basic.ics"
 
 const STATE = "Selangor"
 // Selangor holidays that the feed does not have (checked 20 Oct 2026). Month-day, name.
@@ -27,7 +27,7 @@ export function parseHolidayFeed(ics: string, years: string[]): HolidayRow[] {
     const date = `${start.slice(0, 4)}-${start.slice(4, 6)}-${start.slice(6, 8)}`
     // "Nuzul Al-Quran (regional holiday) (tentative)" → "Nuzul Al-Quran (tentative)"
     const name = field(event, "SUMMARY").replace(/\s*\(regional holiday\)/, "")
-    const description = field(event, "DESCRIPTION")
+    const description = field(event, "DESCRIPTION").split("\\n")[0] // drop "\nDate is tentative…"
     const isNational = description === "Public holiday"
     const isForState = description.startsWith("Public holiday in ") && description.includes(STATE)
 
@@ -36,6 +36,9 @@ export function parseHolidayFeed(ics: string, years: string[]): HolidayRow[] {
     if (!(isNational || isForState) || name === "" || name.length > 80) continue
     if (!rows.some((r) => r.date === date && r.name === name)) rows.push({ date, name })
   }
+
+  // No holidays from the feed means the feed changed. Return none, so the old list stays.
+  if (rows.length === 0) return rows
 
   for (const year of years) {
     for (const [monthDay, name] of STATE_EXTRAS) rows.push({ date: `${year}-${monthDay}`, name })
