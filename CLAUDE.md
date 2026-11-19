@@ -70,6 +70,7 @@ One system for the school: new functions are added as new features (see "Add a n
 1. Make `src/features/<name>/` with `<name>-page.tsx` that exports the page component.
 2. Add one line to `PAGES` in `src/app/pages.ts` (path, label, icon, page).
    It gets a URL (react-router) and a sidebar link.
+   An admin page loads with `lazy()` (copy an existing line), so teachers do not download it.
 3. A feature imports from `src/components/`, `src/lib/` and `src/data/`.
    It never imports from another feature. Move a shared part to `src/components/` first.
 4. Data that 2+ pages share lives in one store (example: `features/booking/bookings-store.tsx`).

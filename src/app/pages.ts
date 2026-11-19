@@ -1,10 +1,19 @@
-import type { ComponentType } from "react"
+import { lazy, type ComponentType } from "react"
 import { CalendarClock, CalendarDays, CalendarPlus, ClipboardList, List, type LucideIcon } from "lucide-react"
 import { BookPage } from "@/features/booking/book-page"
-import { BookingsPage } from "@/features/booking/bookings-page"
-import { DayViewPage } from "@/features/booking/day-view-page"
-import { HolidaysPage } from "@/features/holidays/holidays-page"
-import { SchoolListsPage } from "@/features/school-lists/school-lists-page"
+// change to lazy load
+// import { BookingsPage } from "@/features/booking/bookings-page"
+// import { DayViewPage } from "@/features/booking/day-view-page"
+// import { HolidaysPage } from "@/features/holidays/holidays-page"
+// import { SchoolListsPage } from "@/features/school-lists/school-lists-page"
+
+// Admin pages load only when opened, so teachers do not download them.
+// lazy() needs a default export; our pages use named exports, so .then() renames it.
+const BookingsPage = lazy(() => import("@/features/booking/bookings-page").then((m) => ({ default: m.BookingsPage })))
+const DayViewPage = lazy(() => import("@/features/booking/day-view-page").then((m) => ({ default: m.DayViewPage })))
+const HolidaysPage = lazy(() => import("@/features/holidays/holidays-page").then((m) => ({ default: m.HolidaysPage })))
+const SchoolListsPage = lazy(() => import("@/features/school-lists/school-lists-page").then((m) => ({ default: m.SchoolListsPage })))
+
 
 export type Page = {
   path: string
