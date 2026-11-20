@@ -43,6 +43,10 @@ One system for the school: new functions are added as new features (see "Add a n
 - A booking that has started is read-only.
 - Admin sign-in: Supabase Auth (email + password). To add an admin: create the user in
   Supabase Auth, then insert its id into `admin_user`. Sign-ups are off.
+- The admin is the ICT person, signed in with the `ictmitspi` email (answered 20 Nov 2026).
+- "Forgot password?" emails a link to `/admin/password` (Change password, also in the sidebar).
+  Supabase free sends it only to emails in the Supabase team, at most 2 per hour.
+  The page shows the same message for every email, so it never tells which email is the admin's.
 - Full design: `docs/architecture.md` (flows, API, security), `docs/database.md` (tables).
 
 ## Open questions for the teacher
@@ -111,7 +115,30 @@ One system for the school: new functions are added as new features (see "Add a n
 Never put a secret in code, a commit, logs or chat. A change to a `VITE_*` value needs a new build (push).
 
 ## Later
-- A screen for `booking_history` (today the admin reads it in the Supabase dashboard).
+- A "Removed bookings" list. Edits already show on each booking ("Change history"); removed
+  bookings show only in the Supabase dashboard. Build it when the admin asks.
+
+## Handover plan (planned 19 Nov 2026, not started)
+Do in this order. Each step is its own task.
+1. User guides, one page each, plain words, with screenshots (`docs/guide-teacher.md`, `docs/guide-admin.md`):
+   - Teacher: book a room, see who booked, holiday notes, contact the admin.
+   - Admin: sign in, forgot and change password, bookings and filters, CSV and PDF, day view, edit and remove (WhatsApp),
+     school lists, WhatsApp number, holidays and events, the routine tasks.
+2. Software requirements specification (`docs/srs.md`), structure from ISO/IEC/IEEE 29148:
+   purpose and scope, users and roles, functional requirements (numbered, e.g. FR-01, each with
+   its rule and where it is built), non-functional requirements (security, performance, mobile,
+   availability, free-plan limits), constraints, and every service and account (names and roles
+   only, never passwords).
+   Diagrams in Mermaid: use cases (teacher, admin), system context, deployment (GitHub → Cloudflare,
+   Supabase, keep-alive). Reuse the diagrams in `docs/architecture.md` (flows, architecture,
+   double booking) and `docs/database.md` (ER): link them, do not copy them.
+   `README.md` already has the accounts, routine tasks and fixes: link it, do not repeat it.
+3. Tests: unit tests (Vitest) for the pure logic first: `src/lib/` (time, csv, holiday-feed) and
+   `features/booking/slots.ts`. Then end-to-end tests (Playwright) for "book a room" and "admin edit".
+4. CI: a GitHub Actions job that runs the build and the tests on each push and pull request.
+   Needed only after step 3 (today Cloudflare's build is the only check).
+5. Staging: a second Supabase project, with Cloudflare preview branches pointed at it.
+   Do it when a second developer joins or database changes become frequent.
 
 ## Avoid AI slop
 AI slop is generic, decorated output that looks machine-made and adds nothing.
