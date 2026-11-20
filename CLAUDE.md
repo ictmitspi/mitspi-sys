@@ -120,7 +120,9 @@ Never put a secret in code, a commit, logs or chat. A change to a `VITE_*` value
 
 ## Handover plan (planned 19 Nov 2026, not started)
 Do in this order. Each step is its own task.
-1. User guides, one page each, plain words, with screenshots (`docs/guide-teacher.md`, `docs/guide-admin.md`):
+1. Done 20 Nov 2026. User guides in Claude Docs (export to Word or PDF from the doc's name → Export):
+   Teacher https://claude.ai/artifact/LHyWVNHAeZzmabdttKmGcy, Admin https://claude.ai/artifact/7HL6TRF3bhiG9fYK3kj8An.
+   Update them when a screen or button name changes. They cover:
    - Teacher: book a room, see who booked, holiday notes, contact the admin.
    - Admin: sign in, forgot and change password, bookings and filters, CSV and PDF, day view, edit and remove (WhatsApp),
      school lists, WhatsApp number, holidays and events, the routine tasks.

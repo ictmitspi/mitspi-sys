@@ -164,6 +164,8 @@ The local app uses the **live database**. A test booking is a real booking: remo
 | [CLAUDE.md](CLAUDE.md) | Project rules, booking rules, structure, keys and secrets, how to add a feature |
 | [docs/architecture.md](docs/architecture.md) | Flows, system design, security, decisions and why |
 | [docs/database.md](docs/database.md) | Tables, RLS policies, database functions, the SQL files in order |
+| [Teacher guide](https://claude.ai/artifact/LHyWVNHAeZzmabdttKmGcy) | For teachers: book a room, see who booked, ask for a change. Export to Word or PDF. |
+| [Admin guide](https://claude.ai/artifact/7HL6TRF3bhiG9fYK3kj8An) | For the admin: every admin page, routine tasks, common problems. Export to Word or PDF. |
 
 ## Stack
 
