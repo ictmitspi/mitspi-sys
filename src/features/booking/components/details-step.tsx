@@ -67,7 +67,7 @@ export function DetailsStep({
           </SelectTrigger>
           <SelectContent>
             {choosable(lists.classes, initial?.classId).map((c) => (
-              <SelectItem key={c.id} value={c.id} className="h-11 text-base">
+              <SelectItem key={c.id} value={c.id} className="h-12 text-base">
                 {labelOf(c)}
               </SelectItem>
             ))}
@@ -99,7 +99,7 @@ export function DetailsStep({
           </SelectTrigger>
           <SelectContent>
             {choosable(lists.subjects, initial?.subjectId).map((s) => (
-              <SelectItem key={s.id} value={s.id} className="h-11 text-base">
+              <SelectItem key={s.id} value={s.id} className="h-12 text-base">
                 {labelOf(s)}
               </SelectItem>
             ))}

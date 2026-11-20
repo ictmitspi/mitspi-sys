@@ -52,7 +52,7 @@ function FilterSelect({ id, label, value, options, onChange }: {
         </SelectTrigger>
         <SelectContent>
           {options.map((option) => (
-            <SelectItem key={option.value} value={option.value} className="h-11 text-base">
+            <SelectItem key={option.value} value={option.value} className="h-12 text-base">
               {option.label}
             </SelectItem>
           ))}

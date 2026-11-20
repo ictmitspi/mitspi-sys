@@ -3,7 +3,7 @@
 Supabase (PostgreSQL), project `ict-booking` (Singapore), live since 19 Nov 2026.
 Access rules: RLS and database functions (section 5). Architecture and flows: [architecture.md](architecture.md).
 
-**The SQL that was run is in `supabase/sql/`, files `01`–`08`, in order.** They rebuild the database
+**The SQL that was run is in `supabase/sql/`, files `01`–`09`, in order.** They rebuild the database
 on a new project. The SQL below is a summary for reading; when it differs, the files are right.
 
 | File | Makes |
@@ -16,6 +16,7 @@ on a new project. The SQL below is a summary for reading; when it differs, the f
 | `06-availability-with-id.sql` | `availability` again, now with the booking id |
 | `07-calendar.sql` | `replace_public_holidays` + the starting public holidays |
 | `08-setting.sql` | `school_setting` (admin WhatsApp number) |
+| `09-calendar-created-by.sql` | `calendar_entry.created_by` defaults to the signed-in admin |
 
 The admin account is not in a file: create the user in Supabase Auth, then
 `INSERT INTO admin_user (id, name) VALUES ('<auth user id>', '<name>');`
@@ -89,7 +90,7 @@ erDiagram
     varchar name
     date start_date
     date end_date
-    uuid created_by FK "null for public holidays"
+    uuid created_by FK "the admin who added it (09)"
   }
   SCHOOL_SETTING {
     smallint id PK "always 1: one row"
@@ -212,7 +213,7 @@ CREATE TABLE calendar_entry (
   name       VARCHAR(80) NOT NULL,
   start_date DATE        NOT NULL,
   end_date   DATE        NOT NULL,
-  created_by UUID        REFERENCES admin_user(id),   -- null for public holidays from the feed
+  created_by UUID        REFERENCES admin_user(id),   -- the signed-in admin (default set in 09); null in the SQL editor
   CHECK (end_date >= start_date)
 );
 

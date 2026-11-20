@@ -31,7 +31,7 @@ function isBookingRequest(body: unknown): body is BookingRequest {
     typeof b.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.date) &&
     typeof b.start === "string" && /^\d{2}:\d{2}$/.test(b.start) &&
     typeof b.end === "string" && /^\d{2}:\d{2}$/.test(b.end) &&
-    typeof b.teacherName === "string" && b.teacherName.length <= 80 &&
+    typeof b.teacherName === "string" && b.teacherName.trim().length <= 80 &&
     typeof b.turnstileToken === "string" && b.turnstileToken.length <= 2048
 }
 

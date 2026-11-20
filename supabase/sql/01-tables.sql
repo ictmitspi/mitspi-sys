@@ -72,7 +72,7 @@ CREATE TABLE calendar_entry (
   name       VARCHAR(80) NOT NULL,
   start_date DATE        NOT NULL,
   end_date   DATE        NOT NULL,
-  created_by UUID        REFERENCES admin_user(id),   -- null for public holidays from the feed
+  created_by UUID        REFERENCES admin_user(id),   -- the signed-in admin (default set in 09); null in the SQL editor
   CHECK (end_date >= start_date)
 );
 

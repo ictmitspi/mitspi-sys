@@ -66,7 +66,7 @@ One system for the school: new functions are added as new features (see "Add a n
 - `scripts/` — Node scripts run by hand (`fetch-holidays.mjs`)
 - `src/assets/` — images that the code imports (logo, 128 px)
 - `design/` — source files (full-size logo). The app does not import them.
-- `supabase/sql/` — the SQL run in the Supabase SQL editor, in order `01`–`08`. Rebuilds the database.
+- `supabase/sql/` — the SQL run in the Supabase SQL editor, in order `01`–`09`. Rebuilds the database.
 - `supabase/functions/` — Edge Functions: `create-booking` (Turnstile, then save), `holiday-feed` (Google feed).
 - `.github/workflows/keep-alive.yml` — reads one row Sun + Wed so Supabase free does not pause.
 
@@ -126,7 +126,9 @@ Do in this order. Each step is its own task.
    - Teacher: book a room, see who booked, holiday notes, contact the admin.
    - Admin: sign in, forgot and change password, bookings and filters, CSV and PDF, day view, edit and remove (WhatsApp),
      school lists, WhatsApp number, holidays and events, the routine tasks.
-2. Software requirements specification (`docs/srs.md`), structure from ISO/IEC/IEEE 29148:
+2. Done 20 Nov 2026: SRS in Claude Docs, https://claude.ai/artifact/FWFRTEGDyqPUcg7a6Bo9ZF
+   (`docs/srs.md` only points there). Add a requirement there (next free FR or NFR ID) with each new feature.
+   Software requirements specification, structure from ISO/IEC/IEEE 29148:
    purpose and scope, users and roles, functional requirements (numbered, e.g. FR-01, each with
    its rule and where it is built), non-functional requirements (security, performance, mobile,
    availability, free-plan limits), constraints, and every service and account (names and roles

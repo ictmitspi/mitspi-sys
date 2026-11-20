@@ -156,7 +156,7 @@ pages → stores (`bookings-store.tsx`, `school-lists.tsx`, `school-calendar.tsx
 |---|---|---|
 | Cloudflare Pages | Unlimited bandwidth, 500 builds a month | More than enough |
 | Supabase | 500 MB database, 2 projects, 500,000 Edge Function calls a month | Years of bookings fit |
-| Supabase | **Pauses after 7 days of low activity.** Restore from the dashboard within 90 days. | Keep-alive job (below) |
+| Supabase | **Pauses after 7 days of low activity.** Restore from the dashboard for up to 1 year (Supabase docs, Nov 2026). | Keep-alive job (below) |
 | Supabase | **No automatic backups** on the free plan | The admin downloads the CSV each month |
 | GitHub Actions | Scheduled jobs in a **public** repo stop after 60 days with no commits | The repo is private |
 
