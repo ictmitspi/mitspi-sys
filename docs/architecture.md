@@ -215,7 +215,8 @@ Rules: a feature never imports another feature. Only `src/app` joins them.
 | URL | Page | Access |
 |---|---|---|
 | `/book` | Book a room (3 steps) | Everyone |
-| `/admin/sign-in` | Admin sign in | Everyone |
+| `/admin/sign-in` | Admin sign in, and "Forgot password?" (sends a reset link) | Everyone |
+| `/admin/password` | Change password. The reset link opens it, signed in. | Admin |
 | `/admin/bookings` | Dashboard: filters, counts, list, downloads | Admin |
 | `/admin/bookings/:id` | One booking: edit, remove (read only once it starts) | Admin |
 | `/admin/day?date=YYYY-MM-DD` | Day view: one day as a grid, time × room. A bad date shows today. | Admin |
@@ -242,6 +243,7 @@ Details and SQL: [database.md](database.md) sections 4 and 5.
 | Edit a booking | Function `update_booking`. "Slot taken" if the new time is gone; refused if it has started. | Admin (checked in the function) |
 | Remove a booking | Function `cancel_booking`: marks it cancelled, frees the slots. Refused if it has started. | Admin (checked in the function) |
 | Sign in, sign out | `supabase.auth.signInWithPassword`, `signOut` | Admin |
+| Reset, change password | `resetPasswordForEmail` (link to `/admin/password`), `updateUser({ password })` | Reset: everyone. Change: signed in. |
 
 The browser cannot call `create_booking` directly. Only the Edge Function can (it uses the
 Supabase secret key, which only the server has). So every booking passes the Turnstile check.
@@ -289,7 +291,7 @@ The numbers are a first guess. Change them after the school has used the app for
 | A04 Cryptographic Failures | Keys and traffic | HTTPS only (Cloudflare, Supabase). Supabase secret key and Turnstile secret only in Edge Function secrets. Publishable key and site key are public by design. |
 | A05 Injection | All queries | supabase-js and PL/pgSQL parameters. No string-built SQL. |
 | A06 Insecure Design, API4 Resource Consumption | Public booking with no login | Turnstile plus the abuse limits above. |
-| A07 Authentication Failures | Admin sign-in | Supabase Auth (proven library, password hash, rate limits). No home-made login. |
+| A07 Authentication Failures | Admin sign-in, password reset | Supabase Auth (proven library, password hash, rate limits). No home-made login. Minimum 8 characters, set in Supabase. The reset shows one message for every email, so it does not tell which email is the admin's. |
 | CSV Injection | CSV download | Built: cells that start with `= + - @` get a `'` in front. |
 | A09 Logging Failures | Admin edits and removes | A trigger keeps the old row in `booking_history` (who, when, old values). The API cannot change or delete it. The admin reads it in the Supabase dashboard; no screen yet. No personal data in Edge Function logs. |
 | A10 Exceptional Conditions | Edge Functions | Safe messages for users ("This time was just taken"); details only in the function logs. |

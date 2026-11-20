@@ -1,6 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router"
 import { AppShell } from "@/app/app-shell"
-import { ADMIN_HOME, DAY_VIEW, PAGES, SIGN_IN_PATH } from "@/app/pages"
+import { ADMIN_HOME, DAY_VIEW, PAGES, PASSWORD_PATH, SIGN_IN_PATH } from "@/app/pages"
 import { RequireAdmin } from "@/app/require-admin"
 import { SchoolCalendarProvider } from "@/data/school-calendar"
 import { SchoolListsProvider } from "@/data/school-lists"
@@ -17,7 +17,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <SchoolListsProvider>
-          <SchoolCalendarProvider>
+          <SchoolCalendarProvider> 
             <BookingsProvider>
               <AppShell pages={PAGES}>
                 {/* Shows while a page file downloads (admin pages, first visit only). */}
@@ -34,7 +34,7 @@ export default function App() {
                     {[ADMIN_HOME, DAY_VIEW].map((path) => (
                       <Route key={path} path={`${path}/:id`} element={<RequireAdmin><BookingEditPage /></RequireAdmin>} />
                     ))}
-                    <Route path={SIGN_IN_PATH} element={<SignInPage next={ADMIN_HOME} />} />
+                    <Route path={SIGN_IN_PATH} element={<SignInPage next={ADMIN_HOME} passwordPath={PASSWORD_PATH} />} />
                     <Route path="*" element={<Navigate to={PAGES[0].path} replace />} />
                   </Routes>
                 </Suspense>

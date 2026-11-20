@@ -6,6 +6,8 @@ type AuthStore = {
   isChecking: boolean
   signIn: (email: string, password: string) => Promise<boolean>
   signOut: () => void
+  sendPasswordLink: (email: string, redirectTo: string) => Promise<void>
+  changePassword: (password: string) => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthStore | null>(null)
@@ -39,7 +41,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void supabase.auth.signOut()
   }
 
-  return <AuthContext value={{ isAdmin, isChecking, signIn, signOut }}>{children}</AuthContext>
+  // The email link signs the admin in and opens redirectTo. Free plan: Supabase sends it only to
+  // emails in the Supabase team, at most 2 per hour. Errors are not shown, so the page never says
+  // whether an email belongs to an admin.
+  async function sendPasswordLink(email: string, redirectTo: string) {
+    await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+  }
+
+  async function changePassword(password: string) {
+    const { error } = await supabase.auth.updateUser({ password })
+    return !error
+  }
+
+  return <AuthContext value={{ isAdmin, isChecking, signIn, signOut, sendPasswordLink, changePassword }}>{children}</AuthContext>
 }
 
 async function checkIsAdmin() {

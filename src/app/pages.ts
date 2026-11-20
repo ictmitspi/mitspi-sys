@@ -1,5 +1,5 @@
 import { lazy, type ComponentType } from "react"
-import { CalendarClock, CalendarDays, CalendarPlus, ClipboardList, List, type LucideIcon } from "lucide-react"
+import { CalendarClock, CalendarDays, CalendarPlus, ClipboardList, List, KeyRound, type LucideIcon } from "lucide-react"
 import { BookPage } from "@/features/booking/book-page"
 // change to lazy load
 // import { BookingsPage } from "@/features/booking/bookings-page"
@@ -13,6 +13,7 @@ const BookingsPage = lazy(() => import("@/features/booking/bookings-page").then(
 const DayViewPage = lazy(() => import("@/features/booking/day-view-page").then((m) => ({ default: m.DayViewPage })))
 const HolidaysPage = lazy(() => import("@/features/holidays/holidays-page").then((m) => ({ default: m.HolidaysPage })))
 const SchoolListsPage = lazy(() => import("@/features/school-lists/school-lists-page").then((m) => ({ default: m.SchoolListsPage })))
+const PasswordPage = lazy(() => import("@/features/auth/password-page").then((m) => ({ default: m.PasswordPage })))
 
 
 export type Page = {
@@ -26,6 +27,7 @@ export type Page = {
 export const ADMIN_HOME = "/admin/bookings"
 export const DAY_VIEW = "/admin/day"
 export const SIGN_IN_PATH = "/admin/sign-in"
+export const PASSWORD_PATH = "/admin/password"
 
 // Every page in the sidebar, in order. The first one is the home page.
 // To add a feature: build it in src/features/<name>/, then add one line here.
@@ -35,4 +37,5 @@ export const PAGES: Page[] = [
   { path: DAY_VIEW, label: "Day view", icon: CalendarClock, component: DayViewPage, access: "admin" },
   { path: "/admin/lists", label: "School lists", icon: List, component: SchoolListsPage, access: "admin" },
   { path: "/admin/holidays", label: "Holidays and events", icon: CalendarDays, component: HolidaysPage, access: "admin" },
+  { path: PASSWORD_PATH, label: "Change password", icon: KeyRound, component: PasswordPage, access: "admin" },
 ]
