@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, type SubmitEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,13 +19,14 @@ export function ForgotPassword({ initialEmail, redirectTo, onBack }: {
 
     const emailError = email.includes("@") ? "" : "Enter a valid email address."
 
-    async function send() {
+    async function send(e: SubmitEvent) {
+        e.preventDefault()
         if (emailError) {
             setShowError(true)
             return
         }
         setIsSending(true)
-        await sendPasswordLink(email, redirectTo)
+        await sendPasswordLink(email.trim(), redirectTo)
         setIsSending(false)
         setIsSent(true)
     }
@@ -45,17 +46,17 @@ export function ForgotPassword({ initialEmail, redirectTo, onBack }: {
     return (
         <StepLayout title="Reset password" onBack={onBack}
             footer={
-                <Button className="h-12 w-full text-base" onClick={send} disabled={isSending}>
+                <Button type="submit" form="reset-form" className="h-12 w-full text-base" disabled={isSending}>
                     {isSending ? "Sending…" : "Send reset link"}
                 </Button>
             }>
             <p className="text-muted-foreground">We send a link to the admin email. The link opens a page to set a new password.</p>
-            <div className="space-y-2">
+            <form id="reset-form" onSubmit={send} noValidate className="space-y-2">
                 <Label htmlFor="reset-email">Email</Label>
                 <Input id="reset-email" type="email" className="h-12 text-base" autoComplete="username" maxLength={254}
                     value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={showError && !!emailError} />
                 {showError && emailError && <p className="text-sm text-destructive">{emailError}</p>}
-            </div>
+            </form>
         </StepLayout>
     )
 }

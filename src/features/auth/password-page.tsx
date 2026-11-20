@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, type SubmitEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { StepLayout } from "@/components/step-layout"
@@ -19,7 +19,8 @@ export function PasswordPage() {
   const passwordError = password.length < MIN_LENGTH ? `Use at least ${MIN_LENGTH} characters.` : ""
   const repeatError = repeat === password ? "" : "The 2 passwords are not the same."
 
-  async function save() {
+  async function save(e: SubmitEvent) {
+    e.preventDefault()
     if (passwordError || repeatError) {
       setShowErrors(true)
       return
@@ -38,7 +39,7 @@ export function PasswordPage() {
   return (
     <StepLayout title="Change password"
       footer={
-        <Button className="h-12 w-full text-base" onClick={save} disabled={isSaving}>
+        <Button type="submit" form="password-form" className="h-12 w-full text-base" disabled={isSaving}>
           {isSaving ? "Saving…" : "Save password"}
         </Button>
       }>
@@ -48,18 +49,20 @@ export function PasswordPage() {
           Could not save the password. It must be new, with at least {MIN_LENGTH} characters. Try again.
         </p>
       )}
-      <div className="space-y-2">
-        <Label htmlFor="new-password">New password</Label>
-        <PasswordInput id="new-password" autoComplete="new-password" maxLength={128}
-          value={password} onChange={(e) => setPassword(e.target.value)} aria-invalid={showErrors && !!passwordError} />
-        {showErrors && passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="repeat-password">Type it again</Label>
-        <PasswordInput id="repeat-password" autoComplete="new-password" maxLength={128}
-          value={repeat} onChange={(e) => setRepeat(e.target.value)} aria-invalid={showErrors && !!repeatError} />
-        {showErrors && repeatError && <p className="text-sm text-destructive">{repeatError}</p>}
-      </div>
+      <form id="password-form" onSubmit={save} noValidate className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="new-password">New password</Label>
+          <PasswordInput id="new-password" autoComplete="new-password" maxLength={128}
+            value={password} onChange={(e) => setPassword(e.target.value)} aria-invalid={showErrors && !!passwordError} />
+          {showErrors && passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="repeat-password">Type it again</Label>
+          <PasswordInput id="repeat-password" autoComplete="new-password" maxLength={128}
+            value={repeat} onChange={(e) => setRepeat(e.target.value)} aria-invalid={showErrors && !!repeatError} />
+          {showErrors && repeatError && <p className="text-sm text-destructive">{repeatError}</p>}
+        </div>
+      </form>
     </StepLayout>
   )
 }

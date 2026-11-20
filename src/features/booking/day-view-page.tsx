@@ -71,14 +71,17 @@ export function DayViewPage() {
             to={b.id}
             state={{ from: location.pathname + location.search }}
             aria-label={`${formatTimeRange(b.startMinutes, b.endMinutes)}, ${shortOf(lists.classes, b.classId)}, ${shortOf(lists.subjects, b.subjectId)}, ${b.teacherName}`}
-            className="z-[5] my-0.5 overflow-hidden rounded-md border bg-accent px-2 py-1 text-xs hover:bg-primary/15 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="z-[5] my-0.5 overflow-hidden rounded-md border bg-accent px-2 py-0.5 text-xs leading-4 hover:bg-primary/15 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
             style={{
               gridColumn: rooms.findIndex((r) => r.id === b.roomId) + 2,
               gridRow: `${rowOf(b.startMinutes)} / ${rowOf(b.endMinutes)}`,
             }}
           >
-            <p className="font-medium">{shortOf(lists.classes, b.classId)} · {shortOf(lists.subjects, b.subjectId)}</p>
-            <p className="break-words text-muted-foreground">{b.teacherName}</p>
+            {/* One line, so a 30-minute box (36 px on desktop) shows the name in full. */}
+            <p className="break-words">
+              <span className="font-medium">{shortOf(lists.classes, b.classId)} · {shortOf(lists.subjects, b.subjectId)}</span>
+              <span className="text-muted-foreground"> · {b.teacherName}</span>
+            </p>
           </Link>
         ))}
       </div>

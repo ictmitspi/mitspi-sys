@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, type SubmitEvent } from "react"
 import { useLocation, useNavigate } from "react-router"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,7 +25,8 @@ export function SignInPage({ next, passwordPath }: { next: string; passwordPath:
   // Go back to the admin page that sent us here, if any.
   const from = (location.state as { from?: string } | null)?.from ?? next
 
-  async function submit() {
+  async function submit(e: SubmitEvent) {
+    e.preventDefault() // the app handles it; no page reload
     if (emailError || passwordError) {
       setShowErrors(true)
       return
@@ -47,7 +48,7 @@ export function SignInPage({ next, passwordPath }: { next: string; passwordPath:
     <StepLayout
       title="Admin sign in"
       footer={
-        <Button className="h-12 w-full text-base" onClick={submit} disabled={isSending}>
+        <Button type="submit" form="sign-in-form" className="h-12 w-full text-base" disabled={isSending}>
           {isSending ? "Signing in…" : "Sign in"}
         </Button>
       }
@@ -61,23 +62,25 @@ export function SignInPage({ next, passwordPath }: { next: string; passwordPath:
         </p>
       )}
 
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          className="h-12 text-base"
-          autoComplete="username"
-          maxLength={254}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          aria-invalid={showErrors && !!emailError}
-        />
-        {showErrors && emailError && <p className="text-sm text-destructive">{emailError}</p>}
-      </div>
+      {/* A form, so Enter signs in. The Sign in button is in the footer and joins it by id. */}
+      <form id="sign-in-form" onSubmit={submit} noValidate className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            className="h-12 text-base"
+            autoComplete="username"
+            maxLength={254}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            aria-invalid={showErrors && !!emailError}
+          />
+          {showErrors && emailError && <p className="text-sm text-destructive">{emailError}</p>}
+        </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
           <PasswordInput
             id="password"
             autoComplete="current-password"
@@ -86,11 +89,12 @@ export function SignInPage({ next, passwordPath }: { next: string; passwordPath:
             onChange={(e) => setPassword(e.target.value)}
             aria-invalid={showErrors && !!passwordError}
           />
-        {showErrors && passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
-        <Button variant="link" className="h-12 px-0" onClick={() => setIsForgot(true)}>
-          Forgot password?
-        </Button>
-      </div>
+          {showErrors && passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
+          <Button type="button" variant="link" className="h-12 px-0" onClick={() => setIsForgot(true)}>
+            Forgot password?
+          </Button>
+        </div>
+      </form>
     </StepLayout>
   )
 }
